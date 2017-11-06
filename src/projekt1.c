@@ -34,7 +34,7 @@ int *allocate_intmem (int);
 int
 main (int argc, char **argv)
 {
-  int i, status, datalen, frame_length, sd, bytes, *ip_flags;
+  int status, datalen, frame_length, sd, bytes, *ip_flags;
   char *interface, *target, *src_ip, *dst_ip;
   struct ip iphdr;
   struct udphdr udphdr;
@@ -56,6 +56,31 @@ main (int argc, char **argv)
   dst_ip = allocate_strmem (INET_ADDRSTRLEN);
   ip_flags = allocate_intmem (4);
 
+  char *dest = "127.0.0.1";
+  	int c;
+  	while ((c = getopt(argc, argv, "dtcphs")) != -1) {
+
+  		switch (c) {
+  		case 'h':
+  			printf(
+  					" -d [ip_address] define destination IP address\n\tmust be of x.x.x.x format\n\tdefaults to 127.0.0.1\n\n");
+  			printf(
+  					" -p [port] define port\n\tmust be from 0 - 65535 range inclusive\n\tdefaults to 9001\n\n");
+  			printf(
+  					" -t [type] define type of ICMP packet\n\tmust be from 0 - 255 range inclusive\n\tdefaults to 0\n\n");
+  			printf(
+  					" -c [code] define code of ICMP packet\n\tmust be from 0 - 255 range inclusive\n\tdefaults to 0\n\n");
+  			printf(
+  					" -s [checksum] define checksum\n\tmust be from 0 - 65535\n\tcan be given in hex format 0x[hex_number] but must be in range of 0000 - ffff\n\tdefaults to correct value for packet\n\n");
+  			return 0;
+  		case 'd':
+  			dest = argv[optind]; //note: add check for valid IP
+  			break;
+  		default:
+  			printf("Some error msg.\n");
+  		}
+
+  	}
   // Interface to send packet through.
   strcpy (interface, "eth0");
   // Source IPv4 address: you need to fill this out
@@ -81,13 +106,6 @@ main (int argc, char **argv)
   // Copy source MAC address.
   memcpy (src_mac, ifr.ifr_hwaddr.sa_data, 6 * sizeof (uint8_t));
 
-  // Report source MAC address to stdout.
-  printf ("MAC address for interface %s is ", interface);
-  for (i=0; i<5; i++) {
-    printf ("%02x:", src_mac[i]);
-  }
-  printf ("%02x\n", src_mac[5]);
-
   // Find interface index from interface name and store index in
   // struct sockaddr_ll device, which will be used as an argument of sendto().
   memset (&device, 0, sizeof (device));
@@ -95,7 +113,6 @@ main (int argc, char **argv)
     perror ("if_nametoindex() failed to obtain interface index ");
     exit (EXIT_FAILURE);
   }
-  printf ("Index for interface %s is %i\n", interface, device.sll_ifindex);
 
   // Set destination MAC address: you need to fill these out
   dst_mac[0] = 0xff;
@@ -104,8 +121,6 @@ main (int argc, char **argv)
   dst_mac[3] = 0xff;
   dst_mac[4] = 0xff;
   dst_mac[5] = 0xff;
-
-
 
   // Fill out hints for getaddrinfo().
   memset (&hints, 0, sizeof (struct addrinfo));
@@ -195,7 +210,7 @@ main (int argc, char **argv)
 
   // IPv4 header checksum (16 bits): set to 0 when calculating checksum
   iphdr.ip_sum = 0;
-  iphdr.ip_sum = checksum ((uint16_t *) &iphdr, IP4_HDRLEN);
+  //iphdr.ip_sum = checksum ((uint16_t *) &iphdr, IP4_HDRLEN);
 
   // UDP header
 
