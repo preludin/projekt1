@@ -1,23 +1,3 @@
-/*  Copyright (C) 2011-2015  P.D. Buchan (pdbuchan@yahoo.com)
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-// Send an IPv4 UDP packet via raw socket at the link layer (ethernet frame).
-// Need to have destination MAC address.
-// Includes some UDP data.
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>           // close()
@@ -36,7 +16,7 @@
 #include <linux/if_ether.h>   // ETH_P_IP = 0x0800, ETH_P_IPV6 = 0x86DD
 #include <linux/if_packet.h>  // struct sockaddr_ll (see man 7 packet)
 #include <net/ethernet.h>
-
+#include <getopt.h>
 #include <errno.h>            // errno, perror()
 
 // Define some constants.
@@ -78,6 +58,10 @@ main (int argc, char **argv)
 
   // Interface to send packet through.
   strcpy (interface, "eth0");
+  // Source IPv4 address: you need to fill this out
+  strcpy (src_ip, "100.101.102.103");
+  // Destination URL or IPv4 address: you need to fill this out
+  strcpy (target, "200.201.202.203");
 
   // Submit request for a socket descriptor to look up interface.
   if ((sd = socket (PF_PACKET, SOCK_RAW, htons (ETH_P_ALL))) < 0) {
@@ -121,11 +105,7 @@ main (int argc, char **argv)
   dst_mac[4] = 0xff;
   dst_mac[5] = 0xff;
 
-  // Source IPv4 address: you need to fill this out
-  strcpy (src_ip, "100.101.102.103");
 
-  // Destination URL or IPv4 address: you need to fill this out
-  strcpy (target, "200.201.202.203");
 
   // Fill out hints for getaddrinfo().
   memset (&hints, 0, sizeof (struct addrinfo));
@@ -153,7 +133,7 @@ main (int argc, char **argv)
   device.sll_halen = 6;
 
   // UDP data
-  datalen = 4;
+  datalen = 10;
   data[0] = 'T';
   data[1] = 'e';
   data[2] = 's';
