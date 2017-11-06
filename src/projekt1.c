@@ -82,11 +82,11 @@ main (int argc, char **argv)
 
   	}
   // Interface to send packet through.
-  strcpy (interface, "eth0");
+  strcpy (interface, "wlp4s0");
   // Source IPv4 address: you need to fill this out
-  strcpy (src_ip, "100.101.102.103");
+  strcpy (src_ip, "1.1.1.1");
   // Destination URL or IPv4 address: you need to fill this out
-  strcpy (target, "200.201.202.203");
+  strcpy (target,dest);
 
   // Submit request for a socket descriptor to look up interface.
   if ((sd = socket (PF_PACKET, SOCK_RAW, htons (ETH_P_ALL))) < 0) {
