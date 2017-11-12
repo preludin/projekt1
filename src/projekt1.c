@@ -57,6 +57,8 @@ main (int argc, char **argv)
   ip_flags = allocate_intmem (4);
 
   char *dest = "127.0.0.1";
+  char *sour = "100.0.0.1";
+
   	int c;
   	while ((c = getopt(argc, argv, "dtcphs")) != -1) {
 
@@ -76,6 +78,9 @@ main (int argc, char **argv)
   		case 'd':
   			dest = argv[optind]; //note: add check for valid IP
   			break;
+  		case 's':
+  			sour = argv[optind]; //note: add check for valid IP
+  			break;
   		default:
   			printf("Some error msg.\n");
   		}
@@ -84,7 +89,7 @@ main (int argc, char **argv)
   // Interface to send packet through.
   strcpy (interface, "wlp4s0");
   // Source IPv4 address: you need to fill this out
-  strcpy (src_ip, "1.1.1.1");
+  strcpy (src_ip,sour);
   // Destination URL or IPv4 address: you need to fill this out
   strcpy (target,dest);
 
