@@ -58,36 +58,39 @@ main (int argc, char **argv)
 
   char *dest = "127.0.0.1";
   char *sour = "100.0.0.1";
+  int portzrd = 4501;
+  int portdoc = 4502;
+
 
   	int c;
   	while ((c = getopt(argc, argv, "dtcphs")) != -1) {
 
   		switch (c) {
   		case 'h':
-  			printf(
-  					" -d [ip_address] define destination IP address\n\tmust be of x.x.x.x format\n\tdefaults to 127.0.0.1\n\n");
-  			printf(
-  					" -p [port] define port\n\tmust be from 0 - 65535 range inclusive\n\tdefaults to 9001\n\n");
-  			printf(
-  					" -t [type] define type of ICMP packet\n\tmust be from 0 - 255 range inclusive\n\tdefaults to 0\n\n");
-  			printf(
-  					" -c [code] define code of ICMP packet\n\tmust be from 0 - 255 range inclusive\n\tdefaults to 0\n\n");
-  			printf(
-  					" -s [checksum] define checksum\n\tmust be from 0 - 65535\n\tcan be given in hex format 0x[hex_number] but must be in range of 0000 - ffff\n\tdefaults to correct value for packet\n\n");
+  			printf(	" -s adres źródłowy\n\n");
+  			printf(	" -d adres docelowy\n\n");
+  		    printf( " -p port źródłowy \n\n");
+  			printf( " -t port docelowy0\n\n");
   			return 0;
   		case 'd':
-  			dest = argv[optind]; //note: add check for valid IP
+  			dest = argv[optind];
   			break;
   		case 's':
-  			sour = argv[optind]; //note: add check for valid IP
+  			sour = argv[optind];
   			break;
+  		case 't':
+  		  	portzrd = atoi(argv[optind]);
+  		  	break;
+  		case 'p':
+  		  	portdoc = atoi(argv[optind]);
+  		  	break;
   		default:
   			printf("Some error msg.\n");
   		}
 
   	}
   // Interface to send packet through.
-  strcpy (interface, "wlp4s0");
+  strcpy (interface, "enp5s0");
   // Source IPv4 address: you need to fill this out
   strcpy (src_ip,sour);
   // Destination URL or IPv4 address: you need to fill this out
@@ -220,10 +223,10 @@ main (int argc, char **argv)
   // UDP header
 
   // Source port number (16 bits): pick a number
-  udphdr.source = htons (4950);
+  udphdr.source = htons (portdoc);
 
   // Destination port number (16 bits): pick a number
-  udphdr.dest = htons (4950);
+  udphdr.dest = htons (portzrd);
 
   // Length of UDP datagram (16 bits): UDP header + UDP data
   udphdr.len = htons (UDP_HDRLEN + datalen);
