@@ -34,7 +34,7 @@ int *allocate_intmem (int);
 int
 main (int argc, char **argv)
 {
-  int status, datalen, frame_length, sd, bytes, *ip_flags;
+  int status, frame_length, sd, bytes, *ip_flags;
   char *interface, *target, *src_ip, *dst_ip;
   struct ip iphdr;
   struct udphdr udphdr;
@@ -57,20 +57,25 @@ main (int argc, char **argv)
   ip_flags = allocate_intmem (4);
 
   char *dest = "127.0.0.1";
-  char *sour = "100.0.0.1";
-  int portzrd = 4501;
-  int portdoc = 4502;
+  char *sour = "10.0.0.1";
+  int portzrd = 0;
+  int portdoc = 0;
+  int datalen = 8;
 
 
   	int c;
-  	while ((c = getopt(argc, argv, "dtcphs")) != -1) {
+  	while ((c = getopt(argc, argv, "dstpwc")) != -1) {
 
   		switch (c) {
   		case 'h':
-  			printf(	" -s adres źródłowy\n\n");
-  			printf(	" -d adres docelowy\n\n");
-  		    printf( " -p port źródłowy \n\n");
-  			printf( " -t port docelowy0\n\n");
+  			printf(	"\n");
+  			printf(	" -s adres źródłowy\n");
+  			printf(	" -d adres docelowy\n");
+  		    printf( " -p port źródłowy \n");
+  			printf( " -t port docelowy \n");
+  			printf( " -w długość pakietu\n");
+  			printf( " -c suma kontrolna\n");
+  			printf(	"\n");
   			return 0;
   		case 'd':
   			dest = argv[optind];
@@ -84,35 +89,42 @@ main (int argc, char **argv)
   		case 'p':
   		  	portdoc = atoi(argv[optind]);
   		  	break;
+  		case 'w':
+  			datalen = atoi(argv[optind]);
+  		  	break;
+  		case 'c':
+  			//
+  			break;
   		default:
   			printf("Some error msg.\n");
+  			return 0;
   		}
 
   	}
   // Interface to send packet through.
-  strcpy (interface, "enp5s0");
+  strcpy (interface, "wlp4s0");
   // Source IPv4 address: you need to fill this out
   strcpy (src_ip,sour);
   // Destination URL or IPv4 address: you need to fill this out
   strcpy (target,dest);
 
   // Submit request for a socket descriptor to look up interface.
-  if ((sd = socket (PF_PACKET, SOCK_RAW, htons (ETH_P_ALL))) < 0) {
+/*  if ((sd = socket (PF_PACKET, SOCK_RAW, htons (ETH_P_ALL))) < 0) {
     perror ("socket() failed to get socket descriptor for using ioctl() ");
     exit (EXIT_FAILURE);
-  }
+  }*/
 
   // Use ioctl() to look up interface name and get its MAC address.
-  memset (&ifr, 0, sizeof (ifr));
-  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", interface);
-  if (ioctl (sd, SIOCGIFHWADDR, &ifr) < 0) {
+ //memset (&ifr, 0, sizeof (ifr));
+  //snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s", interface);
+/* if (ioctl (sd, SIOCGIFHWADDR, &ifr) < 0) {
     perror ("ioctl() failed to get source MAC address ");
     return (EXIT_FAILURE);
-  }
-  close (sd);
+  }*/
+  //close (sd);
 
   // Copy source MAC address.
-  memcpy (src_mac, ifr.ifr_hwaddr.sa_data, 6 * sizeof (uint8_t));
+  //memcpy (src_mac, ifr.ifr_hwaddr.sa_data, 6 * sizeof (uint8_t));
 
   // Find interface index from interface name and store index in
   // struct sockaddr_ll device, which will be used as an argument of sendto().
@@ -156,7 +168,6 @@ main (int argc, char **argv)
   device.sll_halen = 6;
 
   // UDP data
-  datalen = 10;
   data[0] = 'T';
   data[1] = 'e';
   data[2] = 's';
