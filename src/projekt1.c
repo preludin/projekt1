@@ -18,18 +18,9 @@
 #include <net/ethernet.h>
 #include <getopt.h>
 #include <errno.h>            // errno, perror()
+#include "biblio.h"
 
-// Define some constants.
-#define ETH_HDRLEN 14  // Ethernet header length
-#define IP4_HDRLEN 20  // IPv4 header length
-#define UDP_HDRLEN  8  // UDP header length, excludes data
 
-// Function prototypes
-uint16_t checksum(uint16_t *, int);
-uint16_t udp4_checksum(struct ip, struct udphdr, uint8_t *, int);
-char *allocate_strmem(int);
-uint8_t *allocate_ustrmem(int);
-int *allocate_intmem(int);
 
 int main(int argc, char **argv) {
 	int status, frame_length, sd, bytes, *ip_flags;
@@ -59,8 +50,8 @@ int main(int argc, char **argv) {
 	int portzrd = 0;
 	int portdoc = 0;
 	int datalen = 8;
-
 	int c;
+	char *dane = "test";
 	while ((c = getopt(argc, argv, "hdstpwc")) != -1) {
 
 		switch (c) {
@@ -71,7 +62,7 @@ int main(int argc, char **argv) {
 			printf(" -p port źródłowy \n");
 			printf(" -t port docelowy \n");
 			printf(" -w długość pakietu\n");
-			printf(" -c suma kontrolna\n");
+			printf(" -c dane\n");
 			printf("\n");
 			return 0;
 		case 'd':
@@ -90,10 +81,10 @@ int main(int argc, char **argv) {
 			datalen = atoi(argv[optind]);
 			break;
 		case 'c':
-			//
+			dane = argv[optind];
 			break;
 		default:
-			printf("Some error msg.\n");
+			printf("Błąd.\n");
 			return 0;
 		}
 
@@ -150,60 +141,43 @@ int main(int argc, char **argv) {
 	device.sll_halen = 6;
 
 	// UDP data
-	data[0] = 'T';
-	data[1] = 'e';
+	strcpy(data, dane);
+/*	data[1] = 'e';
 	data[2] = 's';
-	data[3] = 't';
+	data[3] = 't';*/
 
 	// IPv4 header
 
-	// IPv4 header length (4 bits): Number of 32-bit words in header = 5
-	iphdr.ip_hl = IP4_HDRLEN / sizeof(uint32_t);
-	// Internet Protocol version (4 bits): IPv4
-	iphdr.ip_v = 4;
-	// Type of service (8 bits)
-	iphdr.ip_tos = 0;
-	// Total length of datagram (16 bits): IP header + UDP header + datalen
-	iphdr.ip_len = htons(IP4_HDRLEN + UDP_HDRLEN + datalen);
-	// ID sequence number (16 bits): unused, since single datagram
-	iphdr.ip_id = htons(0);
+	iphdr.ip_hl = IP4_HDRLEN / sizeof(uint32_t); // IPv4 header length (4 bits): Number of 32-bit words in header = 5
+	iphdr.ip_v = 4; // Internet Protocol version (4 bits): IPv4
+	iphdr.ip_tos = 0; // Type of service (8 bits)
+	iphdr.ip_len = htons(IP4_HDRLEN + UDP_HDRLEN + datalen); // Total length of datagram (16 bits): IP header + UDP header + datalen
+	iphdr.ip_id = htons(0); // ID sequence number (16 bits): unused, since single datagram
 
 	// Flags, and Fragmentation offset (3, 13 bits): 0 since single datagram
-	// Zero (1 bit)
-	ip_flags[0] = 0;
-	// Do not fragment flag (1 bit)
-	ip_flags[1] = 0;
-	// More fragments following flag (1 bit)
-	ip_flags[2] = 0;
-	// Fragmentation offset (13 bits)
-	ip_flags[3] = 0;
+	ip_flags[0] = 0; // Zero (1 bit)
+	ip_flags[1] = 0; // Do not fragment flag (1 bit)
+	ip_flags[2] = 0; // More fragments following flag (1 bit)
+	ip_flags[3] = 0; // Fragmentation offset (13 bits)
 
 	iphdr.ip_off = htons((ip_flags[0] << 15) + (ip_flags[1] << 14) + (ip_flags[2] << 13)+ ip_flags[3]);
+	iphdr.ip_ttl = 255;	// Time-to-Live (8 bits): default to maximum value
+	iphdr.ip_p = IPPROTO_UDP;	// Transport layer protocol (8 bits): 17 for UDP
 
-	// Time-to-Live (8 bits): default to maximum value
-	iphdr.ip_ttl = 255;
 
-	// Transport layer protocol (8 bits): 17 for UDP
-	iphdr.ip_p = IPPROTO_UDP;
-
-	// Source IPv4 address (32 bits)
-	status = inet_pton(AF_INET, src_ip, &(iphdr.ip_src));
-	// Destination IPv4 address (32 bits)
-	status = inet_pton(AF_INET, dst_ip, &(iphdr.ip_dst));
+	status = inet_pton(AF_INET, src_ip, &(iphdr.ip_src)); 	// Source IPv4 address (32 bits)
+	status = inet_pton(AF_INET, dst_ip, &(iphdr.ip_dst)); 	// Destination IPv4 address (32 bits)
 
 	// IPv4 header checksum (16 bits): set to 0 when calculating checksum
-	iphdr.ip_sum = 0;
+	//iphdr.ip_sum = 0;
 	iphdr.ip_sum = checksum ((uint16_t *) &iphdr, IP4_HDRLEN);
 
 	// UDP header
-	// Source port number (16 bits): pick a number
-	udphdr.source = htons(portdoc);
-	// Destination port number (16 bits): pick a number
-	udphdr.dest = htons(portzrd);
-	// Length of UDP datagram (16 bits): UDP header + UDP data
-	udphdr.len = htons(UDP_HDRLEN + datalen);
-	// UDP checksum (16 bits)
-	udphdr.check = udp4_checksum(iphdr, udphdr, data, datalen);
+
+	udphdr.source = htons(portdoc); 			// Source port number (16 bits): pick a number
+	udphdr.dest = htons(portzrd);				// Destination port number (16 bits): pick a number
+	udphdr.len = htons(UDP_HDRLEN + datalen);	// Length of UDP datagram (16 bits): UDP header + UDP data
+	udphdr.check = udp4_checksum(iphdr, udphdr, data, datalen); 	// UDP checksum (16 bits)
 
 	// Fill out ethernet frame header.
 
@@ -220,13 +194,9 @@ int main(int argc, char **argv) {
 	ether_frame[13] = ETH_P_IP % 256;
 
 	// Next is ethernet frame data (IPv4 header + UDP header + UDP data).
-
-	// IPv4 header
-	memcpy(ether_frame + ETH_HDRLEN, &iphdr, IP4_HDRLEN * sizeof(uint8_t));
-	// UDP header
-	memcpy(ether_frame + ETH_HDRLEN + IP4_HDRLEN, &udphdr,UDP_HDRLEN * sizeof(uint8_t));
-	// UDP data
-	memcpy(ether_frame + ETH_HDRLEN + IP4_HDRLEN + UDP_HDRLEN, data, datalen * sizeof(uint8_t));
+	memcpy(ether_frame + ETH_HDRLEN, &iphdr, IP4_HDRLEN * sizeof(uint8_t));							// IPv4 header
+	memcpy(ether_frame + ETH_HDRLEN + IP4_HDRLEN, &udphdr,UDP_HDRLEN * sizeof(uint8_t)); 			// UDP header
+	memcpy(ether_frame + ETH_HDRLEN + IP4_HDRLEN + UDP_HDRLEN, data, datalen * sizeof(uint8_t));	// UDP data
 
 	// Submit request for a raw socket descriptor.
 	sd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
@@ -283,8 +253,7 @@ uint16_t checksum(uint16_t *addr, int len) {
 }
 
 // Build IPv4 UDP pseudo-header and call checksum function.
-uint16_t udp4_checksum(struct ip iphdr, struct udphdr udphdr, uint8_t *payload,
-		int payloadlen) {
+uint16_t udp4_checksum(struct ip iphdr, struct udphdr udphdr, uint8_t *payload,int payloadlen) {
 	char buf[IP_MAXPACKET];
 	char *ptr;
 	int chksumlen = 0;
@@ -407,9 +376,7 @@ allocate_intmem(int len) {
 	void *tmp;
 
 	if (len <= 0) {
-		fprintf(stderr,
-				"ERROR: Cannot allocate memory because len = %i in allocate_intmem().\n",
-				len);
+		fprintf(stderr,"ERROR: Cannot allocate memory because len = %i in allocate_intmem().\n",len);
 		exit(EXIT_FAILURE);
 	}
 
