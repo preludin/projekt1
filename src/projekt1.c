@@ -22,22 +22,18 @@
 #include <dlfcn.h>
 
 
-
 int main(int argc, char **argv) {
 
 	void *libr;
 	uint16_t (*checksum)(uint16_t *addr, int len);
 	uint16_t (*udp4_checksum)(struct ip iphdr, struct udphdr udphdr, uint8_t *payload,int payloadlen);
-/*	char (*allocate_strmem)(int len);
-	uint8_t (*allocate_ustrmem)(int len);
-	int (*allocate_intmem)(int len);*/
+
 	libr = dlopen("./proj.so", RTLD_LAZY);
 
 	checksum = dlsym(libr, "checksum");
 	udp4_checksum = dlsym(libr, "udp4_checksum");
-/*	allocate_strmem = dlsym(libr, "allocate_strmem");
-	allocate_ustrmem = dlsym(libr, "allocate_ustrmem");
-	allocate_intmem = dlsym(libr, "allocate_intmem");*/
+
+
 
 	int status, frame_length, sd, bytes, *ip_flags;
 	char *interface, *target, *src_ip, *dst_ip;
@@ -109,6 +105,10 @@ int main(int argc, char **argv) {
 	strcpy(interface, "wlp4s0"); // Interface to send packet through.
 	strcpy(src_ip, sour); // Source IPv4 address: you need to fill this out
 	strcpy(target, dest); // Destination URL or IPv4 address: you need to fill this out
+	strcpy(data, dane); 	// UDP data
+/*	data[1] = 'e';
+	data[2] = 's';
+	data[3] = 't';*/
 
 	// Submit request for a socket descriptor to look up interface.
 	 sd = socket (PF_PACKET, SOCK_RAW, htons (ETH_P_ALL));
@@ -156,14 +156,7 @@ int main(int argc, char **argv) {
 	memcpy(device.sll_addr, src_mac, 6 * sizeof(uint8_t));
 	device.sll_halen = 6;
 
-	// UDP data
-	strcpy(data, dane);
-/*	data[1] = 'e';
-	data[2] = 's';
-	data[3] = 't';*/
-
 	// IPv4 header
-
 	iphdr.ip_hl = IP4_HDRLEN / sizeof(uint32_t); // IPv4 header length (4 bits): Number of 32-bit words in header = 5
 	iphdr.ip_v = 4; // Internet Protocol version (4 bits): IPv4
 	iphdr.ip_tos = 0; // Type of service (8 bits)
