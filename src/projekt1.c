@@ -28,12 +28,15 @@ int main(int argc, char **argv) {
 	uint16_t (*checksum)(uint16_t *addr, int len);
 	uint16_t (*udp4_checksum)(struct ip iphdr, struct udphdr udphdr, uint8_t *payload,int payloadlen);
 
-	libr = dlopen("./proj.so", RTLD_LAZY);
+	// napisany przez nas program musi się komunikować z innym programem,który działa na komputerze o innym porządku bajtów.
+	//Często najprościej jest przesyłać liczby jako tekst, gdyż jest on niezależny od innych czynników, jednak taki format
+	//zajmuje więcej miejsca, a nie zawsze możemy sobie pozwolić na taką rozrzutność.
+	//	Przykładem może być komunikacja sieciowa, w której przyjęło się, że dane przesyłane są w porządku big-endian.
 
-	checksum = dlsym(libr, "checksum");
+	libr = dlopen("./proj.so", RTLD_LAZY); //ładowanie biblioteki z pliku
+
+	checksum = dlsym(libr, "checksum");  // dlsym  pobiera "uchwyt" biblioteki dynamicznej
 	udp4_checksum = dlsym(libr, "udp4_checksum");
-
-
 
 	int status, frame_length, sd, bytes, *ip_flags;
 	char *interface, *target, *src_ip, *dst_ip;
@@ -84,7 +87,7 @@ int main(int argc, char **argv) {
 			sour = argv[optind];
 			break;
 		case 't':
-			portzrd = atoi(argv[optind]);
+			portzrd = atoi(argv[optind]); //Funkcja jako argument pobiera liczbę w postaci ciągu znaków ASCII, a następnie zwraca jej wartość w formacie int.
 			break;
 		case 'p':
 			portdoc = atoi(argv[optind]);
@@ -101,25 +104,29 @@ int main(int argc, char **argv) {
 		}
 
 	}
-
+	//Funkcja kopiuje tekst z tablicy 2 do tablicy 1. Funkcja kopiuje znak po znaku od początku, aż do końca tablicy lub znaku '\0', który też kopiuje.
 	strcpy(interface, "wlp4s0"); // Interface to send packet through.
 	strcpy(src_ip, sour); // Source IPv4 address: you need to fill this out
 	strcpy(target, dest); // Destination URL or IPv4 address: you need to fill this out
 	strcpy(data, dane); 	// UDP data
-/*	data[1] = 'e';
-	data[2] = 's';
-	data[3] = 't';*/
+
+
+	//Funkcja htonl() przeksztalca wartosc long   integer  hostlong  z lokalnego  na sieciowy porzadek bajtow.
+    //Funkcja htons() przeksztalca wartosc short  integer  hostshort z lokalnego  na sieciowy porz�dek bajt�w.
+	//Funkcja ntohl() przeksztalca wartosc long   integer  netlong   z sieciowego na lokalny porz�dek bajt�w.
+	//Funkcja ntohs() przeksztalca wartosc short  integer  netshort  z sieciowego na lokalny porz�dek bajt�w.
 
 	// Submit request for a socket descriptor to look up interface.
 	 sd = socket (PF_PACKET, SOCK_RAW, htons (ETH_P_ALL));
 	// Use ioctl() to look up interface name and get its MAC address.
-	memset(&ifr, 0, sizeof(ifr));
-	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", interface);
-	ioctl(sd, SIOCGIFHWADDR, &ifr);
-	close(sd);
+	memset(&ifr, 0, sizeof(ifr));  //Wypełnia kolejne bajty w pamięci ustaloną wartością.
+	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", interface); //zapisują test w podanej jako argument tablicy znaków.
+
+	ioctl(sd, SIOCGIFHWADDR, &ifr); //funkcja ioctl, za pomocą której można wywołać funkcje na otwartym pliku urządzenia
+	close(sd);						//Chodzi bardziej o wywołanie wcześniej zdefiniowanej w sterowniku operacji, dla której można też przekazać parametr.
 
 	// Copy source MAC address.
-	memcpy(src_mac, ifr.ifr_hwaddr.sa_data, 6 * sizeof(uint8_t));
+	memcpy(src_mac, ifr.ifr_hwaddr.sa_data, 6 * sizeof(uint8_t)); //Funkcja kopiuje size bajtów z obiektu source do obiektu dest.
 
 	// Find interface index from interface name and store index in
 	// struct sockaddr_ll device, which will be used as an argument of sendto().
@@ -141,7 +148,7 @@ int main(int argc, char **argv) {
 	hints.ai_flags = hints.ai_flags | AI_CANONNAME;
 
 	// Resolve target using getaddrinfo().
-	status = getaddrinfo(target, NULL, &hints, &res);
+	status = getaddrinfo(target, NULL, &hints, &res); //t�umaczenie adres�w i us�ug sieciowych
 	ipv4 = (struct sockaddr_in *) res->ai_addr;
 	tmp = &(ipv4->sin_addr);
 	if (inet_ntop(AF_INET, tmp, dst_ip, INET_ADDRSTRLEN) == NULL) {
@@ -174,15 +181,14 @@ int main(int argc, char **argv) {
 	iphdr.ip_p = IPPROTO_UDP;	// Transport layer protocol (8 bits): 17 for UDP
 
 
-	status = inet_pton(AF_INET, src_ip, &(iphdr.ip_src)); 	// Source IPv4 address (32 bits)
-	status = inet_pton(AF_INET, dst_ip, &(iphdr.ip_dst)); 	// Destination IPv4 address (32 bits)
+	status = inet_pton(AF_INET, src_ip, &(iphdr.ip_src)); 	// Source IPv4 address (32 bits)      convert IPv4 and IPv6 addresses from text to binary form
+	status = inet_pton(AF_INET, dst_ip, &(iphdr.ip_dst)); 	// Destination IPv4 address (32 bits) convert IPv4 and IPv6 addresses from text to binary form
 
 	// IPv4 header checksum (16 bits): set to 0 when calculating checksum
 	//iphdr.ip_sum = 0;
 	iphdr.ip_sum = checksum ((uint16_t *) &iphdr, IP4_HDRLEN);
 
 	// UDP header
-
 	udphdr.source = htons(portdoc); 			// Source port number (16 bits): pick a number
 	udphdr.dest = htons(portzrd);				// Destination port number (16 bits): pick a number
 	udphdr.len = htons(UDP_HDRLEN + datalen);	// Length of UDP datagram (16 bits): UDP header + UDP data
@@ -211,7 +217,7 @@ int main(int argc, char **argv) {
 	sd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 
 	// Send ethernet frame to socket.
-	bytes = sendto(sd, ether_frame, frame_length, 0,(struct sockaddr *) &device, sizeof(device));
+	bytes = sendto(sd, ether_frame, frame_length, 0,(struct sockaddr *) &device, sizeof(device)); //wysyła dane z buffera przez socket na adres docelowy
 
 	// Close socket descriptor.
 	close(sd);
